@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "browser-env"
+version = "0.1.0"
+description = "A2E environment host for browser / computer-use agents (browser_env namespace)"
+requires-python = ">=3.10"
+dependencies = [
+    # The protocol SDK is consumed as a source checkout (see [tool.uv.sources]).
+    # Never fork it: browser-env extends env/* by exactly three message pairs.
+    "a2e-python-sdk",
+    "pydantic>=2",
+    "pyyaml",
+    "uvicorn",
+    "fastapi",
+]
+
+[project.optional-dependencies]
+# Real browser. The default (offline) backend is 'scripted' and needs none of
+# this. Install with:  pip install 'browser-env[browser]'
+browser = [
+    "playwright>=1.40",
+]
+dev = [
+    "pytest>=7",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["browser_env*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+browser_env = ["*.yaml", "*.json"]
+
+[tool.uv.sources]
+# Local checkout of the protocol SDK, same as xa-agent / xa-agent-env. Both
+# sides of the wire must resolve the SDK to the SAME source.
+#
+# NOTE: [tool.uv.sources] is honoured by `uv sync`, NOT by `uv pip install`.
+# For a pip/uv-pip workflow install the SDK explicitly first (see the Makefile
+# `venv` target and the Dockerfile).
+a2e-python-sdk = { path = "../a2eprotocol/python-sdk", editable = true }
+
+[project.scripts]
+browser-env = "browser_env.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

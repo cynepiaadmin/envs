@@ -1,0 +1,60 @@
+{
+  "tasks": [
+    {
+      "name": "add-widget-to-cart",
+      "description": "Navigate from the shop home to the Widget product page, add it to the cart, and end on the cart page.",
+      "start_url": "https://shop.test/",
+      "goal": "Add the Widget to the cart and finish on the cart page.",
+      "max_steps": 12,
+      "keywords": ["cart", "widget", "add to cart"],
+      "success": {
+        "url_contains": ["/cart"],
+        "text_contains": ["widget"],
+        "required_actions": ["click"],
+        "forbidden_actions": ["evaluate"],
+        "max_steps_within": 10,
+        "finished": true
+      }
+    },
+    {
+      "name": "search-for-gadget",
+      "description": "Use the search box on the home page to find the Gadget.",
+      "start_url": "https://shop.test/",
+      "goal": "Search for 'gadget' using the search box and open the Gadget result.",
+      "max_steps": 10,
+      "keywords": ["search", "gadget", "find"],
+      "success": {
+        "url_contains": ["/product/2"],
+        "title_contains": ["gadget"],
+        "required_actions": ["fill", "press"],
+        "filled": { "q": "gadget" },
+        "finished": true
+      }
+    },
+    {
+      "name": "read-widget-price",
+      "description": "Report the price shown on the Widget product page.",
+      "start_url": "https://shop.test/product/1",
+      "goal": "Open the Widget page, read its price, and finish with the price in your answer.",
+      "max_steps": 8,
+      "keywords": ["price", "widget", "read"],
+      "success": {
+        "required_actions": ["extract"],
+        "finished": true
+      }
+    },
+    {
+      "name": "browse-and-back",
+      "description": "Visit the Gadget page then return to the home page using history.",
+      "start_url": "https://shop.test/",
+      "goal": "Visit the Gadget product page, then go back to the home page.",
+      "max_steps": 10,
+      "keywords": ["back", "history", "navigate"],
+      "success": {
+        "url_equals": "https://shop.test/",
+        "required_actions": ["navigate", "back"],
+        "finished": true
+      }
+    }
+  ]
+}

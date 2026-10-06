@@ -1,0 +1,105 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Host config — A2E browser environment host (browser_env)
+#
+# This file is PURE host infrastructure. It is loaded by
+# `python -m browser_env.app --config browser_env/host_config.yaml` and
+# validated as an a2e.schema.A2EHostConfig, so it MUST contain only host-side
+# keys (host_id / transport / server / auth / audit / snapshot_store / plugins).
+# It cannot carry agent-side keys (A2EHostConfig forbids extra fields).
+#
+# The AGENT-side runtime config (llm / agent_caps / system_prompt) lives
+# SEPARATELY WITH THE AGENT, at:
+#     browser-agent/browser_agent/runtime/runtime_config.yaml
+# and is loaded by the agent side only. The two configs are linked in CODE by
+# the agent runtime, never mixed in one file.
+#
+# Paths below are ABSOLUTE because this is the container config (/app is the
+# image WORKDIR). For host-side development generate a local config with:
+#     python browser-env/scripts/make_local_config.py
+# ─────────────────────────────────────────────────────────────────────────
+
+host_id: "browser-env"
+
+# HTTP transport: A2EServer mounts /session, /send, /stream, /health
+transport:
+  type: http
+  config:
+    base_url: "http://localhost:8770"
+    send_path: "/send"
+    stream_path: "/stream"
+
+server:
+  host: "0.0.0.0"
+  port: 8770
+
+# Dev only — no gateway in front of the env host in this repo.
+auth_token: null
+
+audit:
+  enabled: true
+  path: "/tmp/a2e/browser/audit.log"
+  rotate:
+    max_bytes: 10485760          # 10 MB per file
+    backup_count: 5
+  session_id_source: host_id
+
+snapshot_store:
+  type: file
+  config:
+    root: "/tmp/a2e/browser"
+
+# Plugin-specific config lives under `metadata` (A2EHostConfig.PluginConfig has
+# name/type/cls/metadata; the executor flattens metadata.model_dump() into the
+# config dict passed to the plugin constructor).
+plugins:
+
+  # ── env/* — the episodic browser environment (RL surface) ────────────
+  # Capability type is SINGULAR-safe here: the executor compares
+  # plugin.config['type'] against the agent's advertised caps, and the SDK
+  # enum value for the env namespace is "env".
+  - name: browser_env
+    type: env
+    cls: browser_env.plugin.BrowserEnvPlugin
+    metadata:
+      enabled: true
+      priority: 0
+      exclusive: false
+
+      # BACKEND is REQUIRED. 'playwright' drives a real headless Chromium;
+      # 'scripted' is the deterministic in-memory model used by tests.
+      BACKEND: "playwright"
+      HEADLESS: true
+      BROWSER: "chromium"
+
+      # ROOT is REQUIRED — the plugin fails at startup if it is missing.
+      # There is deliberately NO task file here: tasks live OUTSIDE the
+      # environment and arrive in env/reset options as a full spec object.
+      ROOT: "/tmp/a2e/browser"
+
+      # Explicit budget/shaping knobs (documented defaults, never implicit).
+      DEFAULT_MAX_STEPS: 15
+      MAX_TEXT_CHARS: 4000
+      MAX_ELEMENTS: 120
+      BROWSER_TIMEOUT_MS: 15000
+      SCREENSHOT_MAX_BYTES: 1500000
+      STEP_PENALTY: 0.0            # reward on a failed action
+      PROGRESS_REWARD: 0.0         # reward on a successful non-terminal step
+
+  # ── tools/* — the SAME browser as callable tools (inference surface) ──
+  # A browser is genuinely both an episodic environment AND a tool surface.
+  # Both plugins delegate to one backend + one episode record, so they can
+  # never disagree about the page state.
+  - name: browser_tools
+    type: tools
+    cls: browser_env.browser_tool.BrowserToolPlugin
+    metadata:
+      enabled: true
+      priority: 5
+      exclusive: false
+      # Must equal the env plugin's `name` above — the executor keys plugins
+      # by their config `name`, and this plugin resolves its sibling by name.
+      ENV_PLUGIN: "browser_env"
+      # URL used when a tool is called before any env/reset. Empty means
+      # "refuse loudly" instead of driving about:blank.
+      DEFAULT_URL: ""
+      MAX_TEXT_CHARS: 4000

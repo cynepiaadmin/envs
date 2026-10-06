@@ -1,0 +1,9 @@
+# Build context is the PARENT directory (repo root), so the ignore file must
+# also live at the context root to be honoured. This one is a convenience copy;
+# the authoritative .dockerignore for `make build` is ../.dockerignore.
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+browser_env/host_config.local.yaml
